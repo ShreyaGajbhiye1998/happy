@@ -5,15 +5,21 @@ import time
 from openai import AzureOpenAI
 from PIL import Image
 
-#opening and reading the configuration file
-config_path = './config.json'
-with open(config_path, 'r') as config_file:
-    config = json.load(config_file)
+# #opening and reading the configuration file
+# config_path = './config.json'
+# with open(config_path, 'r') as config_file:
+#     config = json.load(config_file)
 
-azure_api_key = config['azure_api_key']
-azure_api_version = config['azure_api_version']
-azure_endpoint = config['azure_endpoint']
-deployment_name = config['deployment_name']
+# azure_api_key = config['azure_api_key']
+# azure_api_version = config['azure_api_version']
+# azure_endpoint = config['azure_endpoint']
+# deployment_name = config['deployment_name']
+
+azure_api_key = st.secrets['azure_api_key']
+azure_api_version = st.secrets['azure_api_version']
+azure_endpoint = st.secrets['azure_endpoint']
+deployment_name = st.secrets['deployment_name']
+
 
 client = AzureOpenAI(
     api_key=azure_api_key,  
