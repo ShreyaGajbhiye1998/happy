@@ -1,7 +1,0 @@
-{
-    "azure_api_key": "aa92be90884d495c98ba2d3db6f1f7a5",
-    "azure_api_version": "2024-02-01",
-    "azure_endpoint": "https://mypay-ai2.openai.azure.com/",
-    "deployment_name": "mypay-ai-gpt4"
-}
-
