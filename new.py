@@ -1,8 +1,7 @@
 import streamlit as st
 import re
 import requests
-import psycopg2
-from psycopg2.extras import DictCursor
+from pymongo import MongoClient
 from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from PIL import Image
@@ -13,11 +12,26 @@ azure_api_key = st.secrets['azure_api_key']
 azure_api_version = st.secrets['azure_api_version']
 azure_endpoint = st.secrets['azure_endpoint']
 deployment_name = st.secrets['deployment_name']
-database_url = st.secrets['conString']
+#database_url = st.secrets['conString']
+mongo_uri = st.secrets['mongo_uri']
+
+client = MongoClient(mongo_uri)
+db = client['learning_academy']
+quiz_collection = db['quiz']
+
+client = AzureOpenAI(
+    api_key=azure_api_key,
+    api_version=azure_api_version,
+    azure_endpoint=azure_endpoint
+)
+
+
+# def get_connection():
+#     conn = psycopg2.connect(database_url)
+#     return conn
 
 def get_connection():
-    conn = psycopg2.connect(database_url)
-    return conn
+    return quiz_collection
 
 def is_valid_email(email):
     email_regex = r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
@@ -33,15 +47,40 @@ def get_ip_address():
     except requests.RequestException:
         return None
 
+# def count_entries(userid):
+#     conn = get_connection()
+#     cur = conn.cursor()
+#     query = "SELECT COUNT(*) FROM quiz WHERE userid = %s"
+#     cur.execute(query, (userid,))
+#     count = cur.fetchone()[0]
+#     cur.close()
+#     conn.close()
+#     return count
 def count_entries(userid):
-    conn = get_connection()
-    cur = conn.cursor()
-    query = "SELECT COUNT(*) FROM quiz WHERE userid = %s"
-    cur.execute(query, (userid,))
-    count = cur.fetchone()[0]
-    cur.close()
-    conn.close()
+    collection = get_connection()
+    count = collection.count_documents({"userid": userid})
     return count
+
+# def save_user_info(userid, name, phone, ip_address, user_password):
+#     hashed_password = generate_password_hash(user_password, method='pbkdf2:sha256')
+#     user_info_entry = {
+#         'userid': userid,
+#         'name': name,
+#         'phone': phone,
+#         'date': datetime.now(timezone.utc),
+#         'ip_address': ip_address,
+#         'user_password': hashed_password
+#     }
+#     conn = get_connection()
+#     cur = conn.cursor(cursor_factory=DictCursor)
+#     insert_query = """
+#     INSERT INTO quiz (userid, name, phone, date, ip_address, user_password)
+#     VALUES (%(userid)s, %(name)s, %(phone)s, %(date)s, %(ip_address)s, %(user_password)s)
+#     """
+#     cur.execute(insert_query, user_info_entry)
+#     conn.commit()
+#     cur.close()
+#     conn.close()
 
 def save_user_info(userid, name, phone, ip_address, user_password):
     hashed_password = generate_password_hash(user_password, method='pbkdf2:sha256')
@@ -53,50 +92,36 @@ def save_user_info(userid, name, phone, ip_address, user_password):
         'ip_address': ip_address,
         'user_password': hashed_password
     }
-    conn = get_connection()
-    cur = conn.cursor(cursor_factory=DictCursor)
-    insert_query = """
-    INSERT INTO quiz (userid, name, phone, date, ip_address, user_password)
-    VALUES (%(userid)s, %(name)s, %(phone)s, %(date)s, %(ip_address)s, %(user_password)s)
-    """
-    cur.execute(insert_query, user_info_entry)
-    conn.commit()
-    cur.close()
-    conn.close()
+    collection = get_connection()
+    collection.insert_one(user_info_entry)
+
+# def get_user_name(email):
+#     conn = get_connection()
+#     cur = conn.cursor(cursor_factory=DictCursor)
+#     query = """
+#     SELECT name FROM quiz WHERE userid = %s
+#     """
+#     cur.execute(query, (email,))
+#     user = cur.fetchone()
+#     cur.close()
+#     conn.close()
+#     if user:
+#         return user['name']
+#     return None
 
 def get_user_name(email):
-    conn = get_connection()
-    cur = conn.cursor(cursor_factory=DictCursor)
-    query = """
-    SELECT name FROM quiz WHERE userid = %s
-    """
-    cur.execute(query, (email,))
-    user = cur.fetchone()
-    cur.close()
-    conn.close()
-    if user:
-        return user['name']
-    return None
+    collection = get_connection()
+    user = collection.find_one({"userid": email})
+    return user['name'] if user else None
 
 def verify_user(email, password):
-    conn = get_connection()
-    cur = conn.cursor(cursor_factory=DictCursor)
-    query = """
-    SELECT user_password FROM quiz WHERE userid = %s
-    """
-    cur.execute(query, (email,))
-    user = cur.fetchone()
-    cur.close()
-    conn.close()
-    if user and user['user_password'] is not None:
+    collection = get_connection()
+    user = collection.find_one({"userid": email})
+    if user and user.get('user_password'):
         return check_password_hash(user['user_password'], password)
     return False
 
-# client = AzureOpenAI(
-#     api_key=azure_api_key,
-#     api_version=azure_api_version,
-#     azure_endpoint=azure_endpoint
-# )
+
 
 def generate_text(prompt):
     response = client.chat.completions.create(
@@ -145,43 +170,6 @@ def generate_solution(question):
 
 # Streamlit app
 st.set_page_config(page_title="My Learning Academy")
-
-# # CSS styles
-# st.markdown("""
-#     <style>
-#     .main {
-#         background-color: #f5f5f5;
-#         padding: 2rem;
-#     }
-#     .stButton>button {
-#         background-color: #FF4B4B;
-#         color: white;
-#         border: none;
-#         padding: 10px 20px;
-#         text-align: center;
-#         text-decoration: none;
-#         display: inline-block;
-#         font-size: 16px;
-#         margin: 4px 2px;
-#         transition-duration: 0.4s;
-#         cursor: pointer;
-#         border-radius: 12px;
-#     }
-#     .stButton>button:hover {
-#         background-color: #ff3333;
-#         color: white;
-#     }
-#     .stImage img {
-#         margin-bottom: 2rem;
-#     }
-#     .title {
-#         font-family: 'Arial', sans-serif;
-#         color: #333333;
-#         font-size: 2.5rem;
-#         margin-bottom: 1.5rem;
-#     }
-#     </style>
-# """, unsafe_allow_html=True)
 
 # Custom CSS styles
 st.markdown(
@@ -284,24 +272,6 @@ def reset_quiz():
     st.session_state.view = 'home'  # Go back to the home view
     st.session_state.logged_in = False
 
-# if st.session_state.view == 'home':
-#     col1, col2 = st.columns(2)
-#     with col1:
-#         if st.button('Sign Up', key='home_signup'):
-#             st.session_state.view = 'signup'
-#     with col2:
-#         if st.button('Login', key='home_login'):
-#             st.session_state.view = 'login'
-# if st.session_state.view == 'home':
-#     st.markdown('<div class="button-container">', unsafe_allow_html=True)
-#     col1, col2 = st.columns(2)
-#     with col1:
-#         if st.button('Sign Up', key='home_signup'):
-#             st.session_state.view = 'signup'
-#     with col2:
-#         if st.button('Login', key='home_login'):
-#             st.session_state.view = 'login'
-#     st.markdown('</div>', unsafe_allow_html=True)
 
 if st.session_state.view == 'home':
     st.markdown('<div class="button-container">', unsafe_allow_html=True)
