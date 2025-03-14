@@ -15,8 +15,8 @@ deployment_name = st.secrets['deployment_name']
 #database_url = st.secrets['conString']
 mongo_uri = st.secrets['mongo_uri']
 
-client = MongoClient(mongo_uri)
-db = client['learning_academy']
+mongo_client = MongoClient(mongo_uri)
+db = mongo_client['learning_academy']
 quiz_collection = db['quiz']
 
 # client = AzureOpenAI(
