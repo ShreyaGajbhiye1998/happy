@@ -19,11 +19,11 @@ client = MongoClient(mongo_uri)
 db = client['learning_academy']
 quiz_collection = db['quiz']
 
-client = AzureOpenAI(
-    api_key=azure_api_key,
-    api_version=azure_api_version,
-    azure_endpoint=azure_endpoint
-)
+# client = AzureOpenAI(
+#     api_key=azure_api_key,
+#     api_version=azure_api_version,
+#     azure_endpoint=azure_endpoint
+# )
 
 
 # def get_connection():
