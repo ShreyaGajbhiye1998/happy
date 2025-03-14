@@ -92,11 +92,11 @@ def verify_user(email, password):
         return check_password_hash(user['user_password'], password)
     return False
 
-client = AzureOpenAI(
-    api_key=azure_api_key,
-    api_version=azure_api_version,
-    azure_endpoint=azure_endpoint
-)
+# client = AzureOpenAI(
+#     api_key=azure_api_key,
+#     api_version=azure_api_version,
+#     azure_endpoint=azure_endpoint
+# )
 
 def generate_text(prompt):
     response = client.chat.completions.create(
